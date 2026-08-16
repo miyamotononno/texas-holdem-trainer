@@ -7,6 +7,7 @@
 
 import streamlit as st
 
+from poker_trainer.analysis.orchestrator import analyze_hand
 from poker_trainer.analysis.positions import position_label
 from poker_trainer.core.actions import Action
 from poker_trainer.core.cards import card_to_str
@@ -145,6 +146,28 @@ def render_human_actions(session: GameSession) -> None:
             st.caption("ベット/レイズ不可(オールイン等)")
 
 
+def render_hand_analysis(session: GameSession) -> None:
+    """直前に確定したHandRecordをClaude tool-use分析機能(analysis/orchestrator.py)に
+    渡し、結果をst.session_stateにhand_id単位でキャッシュして表示する。ボタンを押すまで
+    API呼び出しは発生しない(REQUIREMENTS.md 1.3のコスト方針)。"""
+    hand_record = session.session_record.hands[-1]
+    analyses: dict[str, str] = st.session_state.setdefault("hand_analyses", {})
+
+    if hand_record.hand_id not in analyses:
+        if st.button("🤖 このハンドをAIに分析してもらう", key=f"analyze_{hand_record.hand_id}"):
+            human_seat = next(s for s in hand_record.seats if s.is_human).seat_index
+            with st.spinner("Claudeが分析中です..."):
+                try:
+                    analyses[hand_record.hand_id] = analyze_hand(hand_record, human_seat)
+                except Exception as exc:
+                    st.error(f"分析中にエラーが発生しました: {exc}")
+                    return
+
+    if hand_record.hand_id in analyses:
+        st.markdown("### 🤖 AIによる分析")
+        st.markdown(analyses[hand_record.hand_id])
+
+
 def render_hand_result(session: GameSession) -> None:
     result = session.last_hand_result
     hand_state = session.hand_state
@@ -160,6 +183,9 @@ def render_hand_result(session: GameSession) -> None:
             + ("(ショーダウン)" if outcome.showed_down else ""),
             unsafe_allow_html=True,
         )
+
+    render_hand_analysis(session)
+    st.divider()
 
     if session.active_participant_count() < 2:
         st.warning("参加者が2人未満になったため、セッションを終了します。")
