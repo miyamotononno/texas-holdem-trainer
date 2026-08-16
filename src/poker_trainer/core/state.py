@@ -23,6 +23,12 @@ class HandState:
     big_blind: int
     ante: int
     button_seat: int
+    dealt_hole_cards: tuple[str, ...]  # 座席ごとの実際に配られたカード(例: "AhKs")。
+    # ハンド作成時点で1度だけ記録する。pokerkitはショーダウンで公開されなかった
+    # ハンドをState.hole_cardsから消してしまう(ハンド終了後に取得不能になる)ため、
+    # 「あなた自身の本当のカード」を保持する用途にはこちらを使う(本アプリは
+    # 1人用のローカル練習ツールであり、対戦相手からカードを隠すプライバシー境界は
+    # 存在しないため、常に真のカードを記録して問題ない)。
     action_log: list[ActionRecord] = field(default_factory=list)
 
 
@@ -49,8 +55,8 @@ class SeatOutcome:
     starting_stack: int
     ending_stack: int
     net_result: int  # pokerkit の payoffs[seat_index]
-    hole_cards: str | None  # 例: "AhKs"。ショーダウンで公開されなければNone
-    showed_down: bool
+    hole_cards: str  # 例: "AhKs"。常に実際に配られたカード(HandState.dealt_hole_cards由来)
+    showed_down: bool  # ショーダウンで対戦相手に公開されたか(pokerkitのState.hole_cards由来)
 
 
 @dataclass(frozen=True)

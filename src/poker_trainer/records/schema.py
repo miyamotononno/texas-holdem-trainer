@@ -22,8 +22,9 @@ class SeatResult:
     starting_stack: int
     ending_stack: int
     net_result: int  # pokerkitのpayoffs[seat_index]
-    hole_cards: str | None  # 例: "AhKs"。フォールド等で非公開ならNone
-    showed_down: bool
+    hole_cards: str  # 例: "AhKs"。常に実際に配られたカード(1人用ローカルアプリのため
+    # 対戦相手を隠すプライバシー境界はなく、ショーダウンで公開されなくても保持する)
+    showed_down: bool  # ショーダウンで対戦相手に公開されたか
 
 
 @dataclass(frozen=True)

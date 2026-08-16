@@ -41,15 +41,16 @@ def create_hand(
     big_blind: int,
     ante: int = 0,
     min_bet: int | None = None,
-    button_seat: int = 0,
 ) -> HandState:
     """新しいハンドを開始する。len(seats) == len(starting_stacks)(2-8人)。
     min_betは省略時big_blindを用いる(ノーリミットの最小レイズ幅の標準的な慣習)。
 
-    pokerkitは席の座席順を固定の規約(seat 0がボタン)として扱い、ハンドをまたいだ
-    ボタンのローテーションはこの関数の外(将来のテーブル進行オーケストレーション)の
-    責務とする。button_seatはHandRecord用に記録するだけの情報で、pokerkit側の
-    挙動には影響しない。
+    pokerkitは席の座席順を固定の規約で扱う(実機確認済み): 2人卓ではseat0=BB/
+    seat1=SB兼ボタン、3人以上ではseat0=SB/seat1=BB/seat2以降=UTG,...,ボタンは
+    最終座席(seat len(seats)-1)。ハンドをまたいだボタンのローテーションは
+    この関数の外(将来のテーブル進行オーケストレーション)の責務とする。
+    button_seatはこの規約から自動算出し、HandRecord用に記録する
+    (pokerkit自体の挙動には影響しない)。
     """
     if len(seats) != len(starting_stacks):
         raise ValueError("seats and starting_stacks must have the same length")
@@ -65,6 +66,12 @@ def create_hand(
         starting_stacks,
         len(seats),
     )
+    # HOLE_DEALINGは自動化されているためcreate_state呼び出し時点で既に配られている。
+    # pokerkitはショーダウンで公開されなかったハンドをState.hole_cardsから消してしまうため、
+    # 「本当に配られたカード」をここで1度だけスナップショットしておく(HandState.dealt_hole_cards参照)。
+    dealt_hole_cards = tuple(
+        "".join(card_to_str(c) for c in pokerkit_state.hole_cards[i]) for i in range(len(seats))
+    )
     return HandState(
         hand_id=hand_id,
         session_id=session_id,
@@ -73,7 +80,8 @@ def create_hand(
         small_blind=small_blind,
         big_blind=big_blind,
         ante=ante,
-        button_seat=button_seat,
+        button_seat=1 if len(seats) == 2 else len(seats) - 1,
+        dealt_hole_cards=dealt_hole_cards,
     )
 
 
@@ -179,6 +187,7 @@ def apply_action(hand_state: HandState, action: Action) -> HandState:
         big_blind=hand_state.big_blind,
         ante=hand_state.ante,
         button_seat=hand_state.button_seat,
+        dealt_hole_cards=hand_state.dealt_hole_cards,
         action_log=[*hand_state.action_log, record],
     )
 
@@ -217,11 +226,7 @@ def extract_hand_result(hand_state: HandState) -> HandResult:
             starting_stack=state.starting_stacks[i],
             ending_stack=state.stacks[i],
             net_result=state.payoffs[i],
-            hole_cards=(
-                "".join(card_to_str(c) for c in state.hole_cards[i])
-                if state.hole_cards[i]
-                else None
-            ),
+            hole_cards=hand_state.dealt_hole_cards[i],
             showed_down=bool(state.hole_cards[i]),
         )
         for i in range(len(hand_state.seats))

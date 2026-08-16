@@ -6,6 +6,9 @@ requires-python = ">=3.12"
 dependencies = [
     "pokerkit",
     "eval7",
+    "streamlit",
+    "anthropic",
+    "python-dotenv",
 ]
 
 [build-system]
