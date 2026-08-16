@@ -9,9 +9,10 @@ CHIPS_PULLINGを自動化することで、サイドポット処理は自前実�
 
 import copy
 
-from pokerkit import Automation, Card, NoLimitTexasHoldem, State
+from pokerkit import Automation, NoLimitTexasHoldem, State
 
 from poker_trainer.core.actions import Action, ActionType
+from poker_trainer.core.cards import card_to_str
 from poker_trainer.core.history import ActionRecord, Street
 from poker_trainer.core.seats import SeatConfig
 from poker_trainer.core.state import HandResult, HandState, LegalActions, SeatOutcome
@@ -186,12 +187,6 @@ def is_hand_complete(hand_state: HandState) -> bool:
     return not hand_state.pokerkit_state.status
 
 
-def _card_to_str(card: Card) -> str:
-    """例: Jack of spades -> 'Js'。pokerkitのCard.__str__は冗長な英語表記
-    ("JACK OF SPADES (Js)")を返すため、rank/suitのvalueから直接組み立てる。"""
-    return f"{card.rank.value}{card.suit.value}"
-
-
 def _final_pot_total(action_log: list[ActionRecord]) -> int:
     """pokerkitはハンド終了と同時にCHIPS_PUSHING/CHIPS_PULLINGでポットを払い出して
     しまうため、終了後にtotal_pot_amountを読むと0になっている。ハンドは必ず
@@ -213,7 +208,7 @@ def extract_hand_result(hand_state: HandState) -> HandResult:
     state = hand_state.pokerkit_state
 
     board_cards = tuple(
-        _card_to_str(card) for group in state.board_cards for card in group
+        card_to_str(card) for group in state.board_cards for card in group
     )
 
     seat_outcomes = tuple(
@@ -223,7 +218,7 @@ def extract_hand_result(hand_state: HandState) -> HandResult:
             ending_stack=state.stacks[i],
             net_result=state.payoffs[i],
             hole_cards=(
-                "".join(_card_to_str(c) for c in state.hole_cards[i])
+                "".join(card_to_str(c) for c in state.hole_cards[i])
                 if state.hole_cards[i]
                 else None
             ),

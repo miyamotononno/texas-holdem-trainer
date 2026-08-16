@@ -5,10 +5,6 @@ description = "Texas Hold'em practice app with rule-based CPU opponents and LLM-
 requires-python = ">=3.12"
 dependencies = [
     "pokerkit",
-]
-
-[project.optional-dependencies]
-analysis = [
     "eval7",
 ]
 
