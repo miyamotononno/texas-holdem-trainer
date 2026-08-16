@@ -66,6 +66,12 @@ def create_hand(
         starting_stacks,
         len(seats),
     )
+    # HOLE_DEALINGは自動化されているためcreate_state呼び出し時点で既に配られている。
+    # pokerkitはショーダウンで公開されなかったハンドをState.hole_cardsから消してしまうため、
+    # 「本当に配られたカード」をここで1度だけスナップショットしておく(HandState.dealt_hole_cards参照)。
+    dealt_hole_cards = tuple(
+        "".join(card_to_str(c) for c in pokerkit_state.hole_cards[i]) for i in range(len(seats))
+    )
     return HandState(
         hand_id=hand_id,
         session_id=session_id,
@@ -75,6 +81,7 @@ def create_hand(
         big_blind=big_blind,
         ante=ante,
         button_seat=1 if len(seats) == 2 else len(seats) - 1,
+        dealt_hole_cards=dealt_hole_cards,
     )
 
 
@@ -180,6 +187,7 @@ def apply_action(hand_state: HandState, action: Action) -> HandState:
         big_blind=hand_state.big_blind,
         ante=hand_state.ante,
         button_seat=hand_state.button_seat,
+        dealt_hole_cards=hand_state.dealt_hole_cards,
         action_log=[*hand_state.action_log, record],
     )
 
@@ -218,11 +226,7 @@ def extract_hand_result(hand_state: HandState) -> HandResult:
             starting_stack=state.starting_stacks[i],
             ending_stack=state.stacks[i],
             net_result=state.payoffs[i],
-            hole_cards=(
-                "".join(card_to_str(c) for c in state.hole_cards[i])
-                if state.hole_cards[i]
-                else None
-            ),
+            hole_cards=hand_state.dealt_hole_cards[i],
             showed_down=bool(state.hole_cards[i]),
         )
         for i in range(len(hand_state.seats))

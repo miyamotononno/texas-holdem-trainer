@@ -6,13 +6,18 @@ analysis/tools.pyのプレーンな関数を@beta_tool化してclient.beta.messa
 (REQUIREMENTS.md 4.2のエージェント的構成の方針)。
 """
 
+import json
+
 import anthropic
 from anthropic import beta_tool
+from dotenv import load_dotenv
 
 from poker_trainer.analysis import tools as _tools
 from poker_trainer.core.actions import ActionType
 from poker_trainer.core.history import ActionRecord
 from poker_trainer.records.schema import HandRecord
+
+load_dotenv()  # プロジェクトルートの.envがあればANTHROPIC_API_KEY等を環境変数に読み込む
 
 DEFAULT_MODEL = "claude-opus-5"
 
@@ -32,7 +37,7 @@ narrow_opponent_rangeツールでプレイスタイルと実際のアクショ�
 
 
 @beta_tool
-def calculate_equity(hero_hand: str, villain_range: str, board: str = "") -> dict:
+def calculate_equity(hero_hand: str, villain_range: str, board: str = "") -> str:
     """Calculate a hero hand's Monte Carlo equity against a villain's range.
 
     Args:
@@ -43,11 +48,11 @@ def calculate_equity(hero_hand: str, villain_range: str, board: str = "") -> dic
         board: Community cards dealt so far, e.g. "Kd7c2h". Leave empty ("")
             for a preflop-only calculation.
     """
-    return _tools.calculate_equity(hero_hand, villain_range, board)
+    return json.dumps(_tools.calculate_equity(hero_hand, villain_range, board))
 
 
 @beta_tool
-def classify_made_hand(hole_cards: str, board_cards: str) -> dict:
+def classify_made_hand(hole_cards: str, board_cards: str) -> str:
     """Classify the poker hand type currently made by hole cards + board cards
     (e.g. "Pair", "Two Pair", "Straight").
 
@@ -55,11 +60,11 @@ def classify_made_hand(hole_cards: str, board_cards: str) -> dict:
         hole_cards: Two hole cards, e.g. "AhKs".
         board_cards: All board cards dealt so far, e.g. "Kd7c2h".
     """
-    return _tools.classify_made_hand(hole_cards, board_cards)
+    return json.dumps(_tools.classify_made_hand(hole_cards, board_cards))
 
 
 @beta_tool
-def calculate_pot_odds(pot: int, call_amount: int) -> dict:
+def calculate_pot_odds(pot: int, call_amount: int) -> str:
     """Calculate the equity required to profitably call a bet (pot odds).
 
     Args:
@@ -67,22 +72,22 @@ def calculate_pot_odds(pot: int, call_amount: int) -> dict:
         call_amount: Chips required to call. 0 means checking is free (no
             equity required).
     """
-    return _tools.calculate_pot_odds(pot, call_amount)
+    return json.dumps(_tools.calculate_pot_odds(pot, call_amount))
 
 
 @beta_tool
-def calculate_hand_percentile(hole_cards: str) -> dict:
+def calculate_hand_percentile(hole_cards: str) -> str:
     """Rank a preflop starting hand's strength using the Chen Formula, where
     0.0 is the strongest possible hand (AA) and 1.0 is the weakest (72o).
 
     Args:
         hole_cards: Two hole cards, e.g. "AhKs".
     """
-    return _tools.calculate_hand_percentile(hole_cards)
+    return json.dumps(_tools.calculate_hand_percentile(hole_cards))
 
 
 @beta_tool
-def lookup_preflop_reference(position: str, chen_percentile: float) -> dict:
+def lookup_preflop_reference(position: str, chen_percentile: float) -> str:
     """Compare a hand's Chen-formula percentile against a published,
     approximate opening-range guideline for a given table position.
 
@@ -90,11 +95,11 @@ def lookup_preflop_reference(position: str, chen_percentile: float) -> dict:
         position: One of "UTG", "UTG+1", "MP", "HJ", "CO", "BTN", "SB", "BB".
         chen_percentile: The hand's percentile, from calculate_hand_percentile.
     """
-    return _tools.lookup_preflop_reference(position, chen_percentile)
+    return json.dumps(_tools.lookup_preflop_reference(position, chen_percentile))
 
 
 @beta_tool
-def narrow_opponent_range(playstyle: str, preflop_action: str, facing_raise: bool) -> dict:
+def narrow_opponent_range(playstyle: str, preflop_action: str, facing_raise: bool) -> str:
     """Estimate an opponent's hand range from their playstyle and the actual
     preflop action they took, WITHOUT looking at their real hidden cards.
     The returned range string can be passed directly as calculate_equity's
@@ -107,7 +112,7 @@ def narrow_opponent_range(playstyle: str, preflop_action: str, facing_raise: boo
         facing_raise: Whether the opponent was responding to a raise (True) or
             opening the pot themselves (False).
     """
-    return _tools.narrow_opponent_range(playstyle, preflop_action, facing_raise)
+    return json.dumps(_tools.narrow_opponent_range(playstyle, preflop_action, facing_raise))
 
 
 ANALYSIS_TOOLS = [

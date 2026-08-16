@@ -8,6 +8,7 @@ dependencies = [
     "eval7",
     "streamlit",
     "anthropic",
+    "python-dotenv",
 ]
 
 [build-system]
