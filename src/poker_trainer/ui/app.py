@@ -7,6 +7,7 @@
 
 import streamlit as st
 
+from poker_trainer.analysis.positions import position_label
 from poker_trainer.core.actions import Action
 from poker_trainer.core.cards import card_to_str
 from poker_trainer.core.engine import get_legal_actions, is_hand_complete
@@ -71,17 +72,39 @@ def render_seats(session: GameSession) -> None:
     state = hand_state.pokerkit_state
     hand_complete = is_hand_complete(hand_state)
 
-    cols = st.columns(len(hand_state.seats))
+    num_players = len(hand_state.seats)
+    cols = st.columns(num_players)
     for seat in hand_state.seats:
         with cols[seat.seat_index]:
             is_actor = (not hand_complete) and state.actor_index == seat.seat_index
             folded = not state.statuses[seat.seat_index]
             marker = "👉 " if is_actor else ("❌ " if folded else "🟢 ")
+            position = position_label(seat.seat_index, num_players)
             label = seat.display_name + ("(あなた)" if seat.is_human else "")
-            st.markdown(f"{marker}**{label}**")
+            st.markdown(f"{marker}**[{position}] {label}**")
             st.caption(f"スタック: {format_chips(state.stacks[seat.seat_index])}")
             if seat.playstyle is not None:
                 st.caption(f"スタイル: {seat.playstyle.value} (noise={seat.noise:.0f}%)")
+
+
+def render_human_hole_cards(session: GameSession) -> None:
+    """人間の手札は(ショーダウン前でも)pokerkitのState.hole_cardsから常に読める
+    (フォールド/ミュック時に消えるのは他人の手札のみ)。ハンド中ずっと見えるように、
+    結果画面を待たずここで表示する。"""
+    hand_state = session.hand_state
+    assert hand_state is not None
+    human_seat = next((s for s in hand_state.seats if s.is_human), None)
+    if human_seat is None:
+        return
+    hole_cards = tuple(
+        card_to_str(c) for c in hand_state.pokerkit_state.hole_cards[human_seat.seat_index]
+    )
+    if not hole_cards:
+        return
+    st.markdown(
+        f"**あなたの手札**: {format_cards(hole_cards)}",
+        unsafe_allow_html=True,
+    )
 
 
 def render_human_actions(session: GameSession) -> None:
@@ -161,6 +184,7 @@ def render_table(session: GameSession) -> None:
         f"**ポット**: {format_chips(state.total_pot_amount)}",
         unsafe_allow_html=True,
     )
+    render_human_hole_cards(session)
 
     render_seats(session)
 
